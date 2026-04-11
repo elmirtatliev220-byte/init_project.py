@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <script src="https://scripts.tganalytics.xyz/v1/index.js"></script>
+    <script>
+        window.tgAnalytics.init({
+            token: "eyJhcHBfbmFtZSI6InRlbGVjb3JlIiwiYXBwX3VybCI6Imh0dHBzOi8vdC5tZS9UZ3Bvc3RhZG1pbmJvdCIsImFwcF9kb21haW4iOiJodHRwczovL3N1cmwubGkvbmN5dHplIn0=!KRvF2BdU9tekzhBqL5OZJkc08bLzap6NyDxqxSlVzug=",
+            app_name: "telecore"
+        });
+    </script>
+    <script src="https://telegram.org/js/telegram-web-app.js?v=2026"></script>
+    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Telecore Premium</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="static/style.css">
+</head>
+<body class="min-h-screen pb-24" style="background-color: #000000; color: #ffffff;">
+    <!-- PREVIEW MODAL -->
+    <div id="preview-modal" class="hidden fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-4">
+        <div class="bg-[#1c1c1e] w-full max-w-sm rounded-2xl overflow-hidden border border-gray-800 animate-post">
+            <div class="bg-[#121214] p-3 flex justify-between items-center text-white">
+                <span class="font-medium">Предпросмотр</span>
+                <button onclick="closePreview()" class="text-gray-400">✕</button>
+            </div>
+            <div class="p-4 bg-[#000000] relative flex items-end justify-center" style="height: 60vh;"> 
+                <div class="bg-[#1c1c1e] text-white p-3 rounded-2xl rounded-bl-none shadow-sm w-full overflow-y-auto max-h-full scrollbar-hide">
+                    <div id="preview-text" class="text-[15px] leading-[20px] whitespace-pre-wrap break-words text-left"></div>
+                    <div class="text-[11px] text-[#6e7e8e] text-right mt-1">
+                        <span id="preview-time">12:00</span> ✓✓
+                    </div>
+                </div>
+            </div>
+            <div class="p-3 bg-[#121214] text-center">
+                <button onclick="closePreview()" class="text-blue-400 font-medium">Понятно</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI MODAL -->
+    <div id="ai-modal" class="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm hidden flex items-end sm:items-center justify-center transition-opacity">
+        <div class="card w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-5 space-y-4 animate-post">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-purple-400" data-i18n="ai_helper">✨ AI Помощник</h3>
+                <button onclick="toggleAI(false)" class="p-2 bg-gray-100 rounded-full text-gray-500">✕</button>
+            </div>
+            
+            <!-- Скрытый контейнер для совместимости с JS -->
+            <div class="grid grid-cols-2 gap-2 mb-2">
+                <button onclick="runAI('clickbait')" class="p-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors text-left flex flex-col gap-1">
+                    <span>🔥 Виральность</span>
+                    <span class="opacity-60 font-normal text-[10px]">Сделать пост цепляющим</span>
+                </button>
+                <button onclick="runAI('shorten')" class="p-3 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold hover:bg-blue-100 transition-colors text-left flex flex-col gap-1">
+                    <span>✂️ Сжать</span>
+                    <span class="opacity-60 font-normal text-[10px]">Оставить только суть</span>
+                </button>
+                <button onclick="runAI('emoji')" class="p-3 bg-yellow-50 text-yellow-600 rounded-xl text-xs font-bold hover:bg-yellow-100 transition-colors text-left flex flex-col gap-1">
+                    <span>🎨 Оформить</span>
+                    <span class="opacity-60 font-normal text-[10px]">Добавить нужные эмодзи</span>
+                </button>
+            </div>
+
+            <div id="ai-input-area" class="space-y-2">
+                <p id="ai-prompt-label" class="text-xs font-bold text-gray-500">Ваш запрос к AI</p>
+                <textarea id="ai-prompt" class="input-field w-full h-20 p-3 text-sm resize-none" placeholder="О чем написать? Или вставь свой текст, чтобы я его улучшил..."></textarea>
+                <button onclick="submitAI()" id="ai-submit-btn" class="w-full py-3 bg-black text-white rounded-xl font-bold text-sm">🚀 Поехали</button>
+            </div>
+
+            <div id="ai-result-area" class="hidden space-y-2">
+                <div class="input-field p-3 rounded-xl text-sm max-h-40 overflow-y-auto" id="ai-result-text"></div>
+                <div class="flex gap-2">
+                    <button onclick="useAIResult()" class="flex-1 py-3 bg-blue-500 text-white rounded-xl font-bold text-sm">Использовать</button>
+                    <button onclick="resetAI()" class="px-4 py-3 bg-gray-200 text-gray-600 rounded-xl font-bold text-sm">Назад</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHANNEL MODAL (NEW) -->
+    <div id="channel-modal" class="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm hidden flex items-end sm:items-center justify-center transition-opacity">
+        <div class="card w-full max-w-lg rounded-t-2xl sm:rounded-2xl p-5 space-y-4 animate-post">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-black">📢 Добавить канал</h3>
+                <button onclick="toggleChannelModal(false)" class="p-2 bg-gray-100 rounded-full text-gray-500">✕</button>
+            </div>
+            
+            <div class="space-y-4">
+                <p class="text-xs text-gray-500">Просто выберите канал из списка — мы сами настроим ID.</p>
+                
+                <button onclick="requestTelegramChannel()" class="w-full py-3 bg-blue-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95 transition-transform">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                    Выбрать канал
+                </button>
+
+                <div class="relative flex py-1 items-center">
+                    <div class="flex-grow border-t border-gray-200"></div>
+                    <span class="flex-shrink-0 mx-4 text-gray-300 text-[10px] font-bold uppercase">ИЛИ ВРУЧНУЮ</span>
+                    <div class="flex-grow border-t border-gray-200"></div>
+                </div>
+
+                <div class="space-y-2">
+                    <input type="text" id="channel-id-input" class="input-field w-full p-3 text-sm" placeholder="Ссылка (t.me/...) или @username">
+                    <button onclick="submitChannelForm()" class="w-full py-3 bg-black text-white rounded-xl font-bold text-sm active:scale-95 transition-transform">Подключить</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- WELCOME SCREEN -->
+    <div id="welcome-screen" class="fixed inset-0 z-[100] flex flex-col transition-all duration-500" style="background-color: #000000; color: #ffffff;">
+        <!-- Decorative Background -->
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+            <div class="absolute -top-[30%] -left-[30%] w-[150%] h-[80%] bg-violet-500/10 blur-[100px] rounded-full"></div>
+            <div class="absolute top-[20%] -right-[30%] w-[120%] h-[80%] bg-blue-500/10 blur-[100px] rounded-full"></div>
+        </div>
+
+        <!-- Slides Container -->
+        <div class="relative z-10 flex-1 flex items-center justify-center">
+            <div id="onboarding-slider" class="w-full max-w-md px-6 transition-all duration-300">
+                <!-- Content injected by JS -->
+            </div>
+        </div>
+        
+        <!-- Bottom Controls -->
+        <div class="relative z-10 w-full p-6 pb-safe">
+            <div class="flex justify-center gap-2 mb-6" id="onboarding-dots">
+                <!-- Dots injected by JS -->
+            </div>
+            <button onclick="nextOnboardingStep()" id="onboarding-btn" class="w-full py-4 bg-gradient-to-r from-violet-600 to-blue-600 text-white rounded-2xl font-bold text-base shadow-xl shadow-violet-500/30 active:scale-95 transition-all">
+                Продолжить
+            </button>
+        </div>
+    </div>
+
+    <!-- НОВЫЙ HEADER (Контекст) -->
+    <header class="fixed top-0 left-0 right-0 z-40 glass-nav px-5 pt-safe h-16 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <!-- Аватар канала (заглушка или реальный) -->
+            <div id="channel-icon" class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold text-xs shadow-lg shadow-indigo-500/20">#</div>
+            
+            <div class="flex flex-col">
+                <select id="channel-select" class="channel-selector cursor-pointer" onchange="switchChannel(this.value)"></select>
+                <div class="flex items-center gap-1"><div id="status-dot" class="w-1.5 h-1.5 rounded-full bg-green-500"></div><span id="conn-status" class="text-[10px] font-medium text-gray-400">Онлайн</span></div>
+            </div>
+        </div>
+        <button onclick="promptAddChannel()" class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-50 text-gray-600 hover:bg-gray-100 transition-colors">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+    </header>
+
+    <!-- ОСНОВНОЙ КОНТЕНТ (с отступами под бары) -->
+    <main class="pt-24 pb-28 px-4 w-full max-w-2xl mx-auto space-y-5">
+        
+        <div id="tab-main" class="tab-pane active space-y-5">
+            <!-- БЛОК РЕКЛАМЫ (МОНЕТИЗАЦИЯ) -->
+            <div id="ad-container" class="hidden flex gap-4 overflow-x-auto pb-2 px-[7.5vw] no-scrollbar snap-x snap-mandatory scroll-smooth items-center">
+                <!-- Сюда JS вставит рекламу -->
+            </div>
+
+            <div class="card p-5 space-y-5">
+                <!-- ПЕРЕКЛЮЧАТЕЛЬ ТИПА ПОСТА -->
+                <div class="flex p-1 rounded-xl mb-2" style="background-color: #121214;">
+                    <button onclick="setPostType('default')" id="type-default" class="flex-1 py-2.5 rounded-lg text-xs font-bold shadow-sm transition-all" style="background-color: #7042f8; color: #ffffff;" data-i18n="post_type">Пост</button>
+                    <button onclick="setPostType('poll')" id="type-poll" class="flex-1 py-2.5 rounded-lg text-xs font-bold text-gray-400 hover:text-gray-600 transition-all" data-i18n="poll_type">Опрос</button>
+                </div>
+
+                <!-- ОБЫЧНЫЙ ПОСТ -->
+                <div id="post-editor-default" class="relative">
+                    <div class="rounded-2xl p-4 border border-transparent focus-within:border-indigo-500/30 focus-within:shadow-lg focus-within:shadow-indigo-500/5 transition-all duration-300" style="background-color: #121214;">
+                        <!-- Область текста -->
+                        <textarea id="msg" class="w-full h-64 bg-transparent text-[15px] outline-none resize-none leading-relaxed font-medium" style="color: #ffffff;" placeholder="О чем расскажете сегодня?" data-i18n-placeholder="post_placeholder"></textarea>
+                        
+                        <!-- Область превью (Скрыта по умолчанию) -->
+                        <div id="mini-preview-container" class="hidden relative w-full h-16 mt-2 bg-gray-200 rounded-lg overflow-hidden">
+                            <img id="mini-image-preview" class="w-full h-full object-cover opacity-0 transition-opacity duration-300">
+                            <video id="mini-video-preview" class="w-full h-full object-cover hidden"></video>
+                            <button onclick="clearMedia()" class="absolute top-1 right-1 bg-black/50 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs backdrop-blur-sm">✕</button>
+                        </div>
+
+                        <!-- Тулбар инструментов -->
+                        <div class="flex items-center justify-between mt-2 pt-2 border-t border-gray-200/50">
+                            <div class="flex items-center gap-2">
+                                <!-- Кнопка Медиа -->
+                                <button onclick="document.getElementById('media-input').click()" class="p-2 rounded-full hover:bg-indigo-50 text-indigo-500 transition-colors active:scale-90">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                                </button>
+                                <!-- Кнопка AI -->
+                                <button onclick="toggleAI(true); runAI('generate')" class="flex items-center gap-1 px-3 py-1.5 rounded-full bg-gradient-to-r from-indigo-500/10 to-violet-500/10 text-indigo-600 text-[11px] font-bold hover:from-indigo-500/20 hover:to-violet-500/20 transition-all">
+                                    ✨ AI
+                                </button>
+                            </div>
+                            <div class="text-[10px] font-bold text-gray-300" id="char-count">0</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Скрытый инпут для файла -->
+                    <input type="file" id="media-input" accept="image/*,video/*" class="hidden" onchange="previewMedia(this)">
+                </div>
+
+                <!-- ОПРОС -->
+                <div id="post-editor-poll" class="hidden space-y-3">
+                    <input type="text" id="poll-question" class="input-field w-full p-3 text-sm font-bold" placeholder="Вопрос опроса">
+                    <div id="poll-options-list" class="space-y-2">
+                        <input type="text" class="poll-option input-field w-full p-3 text-sm" placeholder="Вариант 1">
+                        <input type="text" class="poll-option input-field w-full p-3 text-sm" placeholder="Вариант 2">
+                    </div>
+                    <button onclick="addPollOption()" class="text-blue-500 text-xs font-bold">+ Добавить вариант</button>
+                    <div class="flex gap-4 pt-2">
+                        <label class="flex items-center gap-2 text-xs"><input type="checkbox" id="poll-anon" checked> Анонимный</label>
+                        <label class="flex items-center gap-2 text-xs"><input type="checkbox" id="poll-multi"> Несколько ответов</label>
+                    </div>
+                </div>
+
+                <!-- ХЕШТЕГИ (Общие) -->
+                <input type="text" id="hashtags" class="input-field w-full p-3 text-sm" placeholder="#хештеги #через #пробел">
+
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between px-1">
+                        <label class="text-[11px] font-bold text-gray-400 uppercase tracking-wider" data-i18n="publish_date">Дата публикации</label>
+                        <span class="text-[10px] text-indigo-500 font-bold bg-indigo-50 px-2 py-0.5 rounded-md">AUTO-TIMEZONE</span>
+                    </div>
+                    <input type="datetime-local" id="scheduleTime" class="input-field w-full p-4 text-sm font-medium">
+                </div>
+
+                <div class="flex items-center gap-3 pt-2">
+                    <button onclick="showPostPreview()" class="py-4 px-4 rounded-2xl flex items-center justify-center gap-2 active:scale-[0.97] transition-all" style="background-color: #121214; color: #ffffff;">
+                        <span class="text-lg">👁️</span>
+                        <span class="text-sm font-bold">Предпросмотр</span>
+                    </button>
+                    <button onclick="smartSend()" id="main-send-btn" class="btn-primary flex-grow py-4 rounded-2xl flex items-center justify-center gap-3 active:scale-[0.97] transition-all">
+                        <span id="btn-text" class="text-sm font-bold uppercase tracking-widest" data-i18n="btn_publish">Опубликовать</span>
+                        <div class="loader" id="btn-loader"></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-queue" class="tab-pane space-y-4">
+            <div class="flex justify-between items-center px-2">
+                <h3 class="text-xs font-bold opacity-40 uppercase tracking-widest" data-i18n="waiting_list">Лист ожидания</h3>
+                <button onclick="loadScheduled()" class="text-[10px] font-bold text-blue-500 uppercase">Обновить</button>
+            </div>
+            <div id="scheduledList" class="space-y-3"></div>
+        </div>
+
+        <div id="tab-stats" class="tab-pane space-y-5">
+            <!-- ГЛАВНАЯ КАРТОЧКА (Аудитория) -->
+            <div class="card p-6 relative overflow-hidden bg-gradient-to-br from-indigo-600 to-violet-600 text-white border-none shadow-xl shadow-indigo-500/30">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+                <div class="relative z-10">
+                    <p class="text-[10px] font-bold opacity-70 uppercase tracking-widest mb-1" data-i18n="subscribers">Подписчики</p>
+                    <div class="flex items-baseline gap-3">
+                        <h1 id="sub-count" class="text-5xl font-black tracking-tight">0</h1>
+                        <span id="sub-growth" class="px-2 py-1 bg-white/20 rounded-lg text-xs font-bold backdrop-blur-sm">0%</span>
+                    </div>
+                    <p class="text-xs mt-2 opacity-80 font-medium">Обновлено только что</p>
+                </div>
+            </div>
+
+            <!-- СЕТКА МЕТРИК (Dagestat Style) -->
+            <div class="grid grid-cols-2 gap-3">
+                <div class="card p-4 flex flex-col justify-between h-28">
+                    <div class="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-600 mb-2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    </div>
+                    <div>
+                        <span id="reach-count" class="stat-value">0</span>
+                        <p class="stat-label" data-i18n="avg_reach">Ср. охват</p>
+                    </div>
+                </div>
+                <div class="card p-4 flex flex-col justify-between h-28">
+                    <div class="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-600 mb-2">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                    </div>
+                    <div>
+                        <span id="er-value" class="stat-value">0%</span>
+                        <p class="stat-label" data-i18n="er">Вовлеченность (ER)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ГРАФИК -->
+            <div class="card p-5">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="stat-label opacity-100" data-i18n="growth_chart">Динамика роста</h3>
+                    <div class="flex gap-1">
+                        <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                        <span class="text-[10px] font-bold opacity-50">LIVE</span>
+                    </div>
+                </div>
+                <div class="h-40 w-full">
+                    <canvas id="growthChart"></canvas>
+                </div>
+            </div>
+
+            <!-- БЕЗОПАСНОСТЬ -->
+            <div class="card p-4 flex items-center justify-between border-l-4 border-green-500">
+                <div>
+                    <p class="stat-label mb-1" data-i18n="security_status">Статус защиты</p>
+                    <h4 id="security-status" class="text-sm font-bold">Анализ...</h4>
+                </div>
+                <div class="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center text-green-600">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                </div>
+            </div>
+            <p class="text-xs text-gray-400 px-2 -mt-3" data-i18n="security_desc">Анализирует историю подписок на предмет резких скачков (накрутки).</p>
+            <div id="security-details" class="text-xs text-red-500 px-2"></div>
+        </div>
+
+        <!-- TOOLS TAB (Трафик и Автоответы) -->
+        <div id="tab-tools" class="tab-pane space-y-5">
+            <h2 class="text-xl font-black tracking-tight px-1" data-i18n="tools_title">Инструменты</h2>
+            
+            <!-- ИСТОЧНИКИ ТРАФИКА -->
+            <div class="card p-4 space-y-3">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xs font-bold opacity-40 uppercase tracking-widest" data-i18n="traffic_sources">Источники трафика</h3>
+                    <button onclick="loadTraffic()" class="text-[10px] font-bold text-blue-500 uppercase">Обновить</button>
+                </div>
+                <p class="text-xs text-gray-400 px-1" data-i18n="traffic_desc">Создавайте уникальные ссылки, чтобы отслеживать, откуда приходят новые подписчики.</p>
+                
+                <div class="flex gap-2">
+                    <input type="text" id="invite-name" class="input-field w-full p-3 text-xs" placeholder="Название (напр. TikTok)">
+                    <button onclick="createInvite()" class="bg-blue-500 text-white rounded-lg px-4 text-xs font-bold">Создать</button>
+                </div>
+
+                <div id="traffic-list" class="space-y-2 mt-2">
+                    <!-- Список ссылок -->
+                </div>
+            </div>
+
+            <!-- АВТООТВЕТЧИК -->
+            <div class="card p-4 space-y-3">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xs font-bold opacity-40 uppercase tracking-widest" data-i18n="auto_responder">Автоответчик</h3>
+                    <button onclick="loadAutoResponses()" class="text-[10px] font-bold text-blue-500 uppercase">Обновить</button>
+                </div>
+                <p class="text-xs text-gray-400 px-1" data-i18n="auto_responder_desc">Настройте автоматические ответы на ключевые слова в вашем канале или группе.</p>
+                
+                <div class="space-y-2 p-3 rounded-xl border border-gray-100" style="background-color: #121214;">
+                    <input type="text" id="ar-trigger" class="input-field w-full p-2 rounded-lg text-xs font-bold outline-none" placeholder="Если пишут (триггер)...">
+                    <textarea id="ar-response" class="input-field w-full p-2 rounded-lg text-xs outline-none resize-none h-16" placeholder="Ответить так..."></textarea>
+                    <button onclick="createAutoResponse()" class="w-full py-2 bg-black text-white rounded-lg text-xs font-bold uppercase">Добавить правило</button>
+                </div>
+
+                <div id="ar-list" class="space-y-2 mt-2">
+                    <!-- Список правил -->
+                </div>
+            </div>
+        </div>
+
+        <!-- ADMIN PANEL TAB -->
+        <div id="tab-admin" class="tab-pane space-y-5">
+            <div class="flex items-center justify-between px-1">
+                <h2 class="text-xl font-black tracking-tight">Панель управления</h2>
+                <span class="bg-purple-100 text-purple-600 text-[10px] font-bold px-2 py-1 rounded-full">SUPER ADMIN</span>
+            </div>
+
+            <!-- 1. МЕТРИКИ -->
+            <div class="grid grid-cols-3 gap-3">
+                <div class="card p-3 flex flex-col justify-between h-24 bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/20">
+                    <span id="adm-users" class="text-2xl font-bold">0</span>
+                    <p class="text-[10px] font-bold opacity-80 uppercase">Пользователи</p>
+                </div>
+                <div class="card p-3 flex flex-col justify-between h-24 bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-500/20">
+                    <span id="adm-channels" class="text-2xl font-bold">0</span>
+                    <p class="text-[10px] font-bold opacity-80 uppercase">Каналы</p>
+                </div>
+                <div class="card p-3 flex flex-col justify-between h-24 bg-gray-900 text-white shadow-lg">
+                    <span id="adm-posts" class="text-2xl font-bold">0</span>
+                    <p class="text-[10px] font-bold opacity-80 uppercase">Посты в базе</p>
+                </div>
+            </div>
+
+            <!-- 2. МОНЕТИЗАЦИЯ (РЕКЛАМА) -->
+            <div class="card p-4 space-y-3">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-xs font-bold opacity-40 uppercase tracking-widest">Управление рекламой</h3>
+                    <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                </div>
+                
+                <div class="p-3 rounded-xl space-y-2 border border-gray-100" style="background-color: #121214;">
+                    <input type="text" id="ad-title" class="input-field w-full p-2.5 rounded-lg text-xs font-bold outline-none" placeholder="Заголовок (Название)">
+                    <input type="text" id="ad-link" class="input-field w-full p-2.5 rounded-lg text-xs outline-none" placeholder="Ссылка (https://...)">
+                    <textarea id="ad-desc" class="input-field w-full p-2.5 rounded-lg text-xs outline-none resize-none h-16" placeholder="Текст рекламного объявления..."></textarea>
+                    <button onclick="createAd()" class="w-full py-3 bg-black text-white rounded-lg text-xs font-bold uppercase active:scale-95 transition-transform">
+                        Создать баннер
+                    </button>
+                </div>
+
+                <div class="border-t border-gray-100 pt-3 mt-3">
+                    <p class="text-[10px] font-bold opacity-40 mb-2">АКТИВНЫЕ ОБЪЯВЛЕНИЯ</p>
+                    <div id="adm-ads-list" class="space-y-2"></div>
+                </div>
+            </div>
+
+            <!-- 3. ГЛОБАЛЬНЫЙ СПИСОК КАНАЛОВ -->
+            <div class="card p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xs font-bold opacity-40 uppercase tracking-widest">Все каналы в системе</h3>
+                    <button onclick="loadAdminData()" class="text-[10px] font-bold text-blue-500 uppercase">Обновить</button>
+                </div>
+                <div id="adm-channels-list" class="space-y-3 max-h-60 overflow-y-auto pr-1"></div>
+            </div>
+        </div>
+
+        <!-- PROFILE TAB -->
+        <div id="tab-profile" class="tab-pane space-y-5">
+            <div class="card p-6 flex flex-col items-center text-center">
+                <div class="relative mb-4">
+                    <img id="profile-avatar" src="" class="w-24 h-24 rounded-full shadow-xl object-cover bg-gray-100" onerror="this.src='https://placehold.co/100x100?text=User'">
+                    <div class="absolute bottom-0 right-0 bg-green-500 w-6 h-6 rounded-full border-4 border-white"></div>
+                </div>
+                
+                <h2 id="profile-name" class="text-2xl font-black tracking-tight mb-1">Loading...</h2>
+                <div class="flex items-center gap-2 mb-6">
+                    <span class="px-2 py-1 bg-gray-100 rounded-md text-[10px] font-mono text-gray-500" id="profile-id">ID: ...</span>
+                    <span class="px-2 py-1 bg-purple-100 text-purple-600 rounded-md text-[10px] font-bold uppercase" id="profile-role">USER</span>
+                </div>
+
+                <div class="w-full space-y-4">
+                    <!-- TON Connect Button -->
+                    <button id="ton-connect-btn" class="w-full py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform" style="background-color: #7042f8; color: white;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z"></path></svg>
+                        Connect Wallet
+                    </button>
+
+                    <!-- Language Switcher -->
+                    <div class="text-left">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase mb-2 ml-1" data-i18n="language">Язык / Language</p>
+                        <div class="flex bg-gray-100 p-1 rounded-xl">
+                            <button onclick="changeLanguage('ru')" class="lang-btn flex-1 py-2 rounded-lg text-xs font-bold transition-all" id="lang-ru">🇷🇺 Русский</button>
+                            <button onclick="changeLanguage('en')" class="lang-btn flex-1 py-2 rounded-lg text-xs font-bold transition-all" id="lang-en">🇬🇧 English</button>
+                        </div>
+                    </div>
+
+                    <!-- Support -->
+                    <div class="text-left">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase mb-2 ml-1" data-i18n="support">Поддержка</p>
+                        <a href="https://t.me/pux220" target="_blank" class="w-full py-3 bg-blue-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30 active:scale-95 transition-transform">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                            <span data-i18n="contact_dev">Связаться с разработчиком</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Уведомление о логировании -->
+                <div class="mt-6 text-center text-xs text-gray-400 max-w-xs mx-auto">
+                    <p data-i18n="logging_notice">🔒 Все действия в приложении логируются в целях безопасности и для улучшения качества сервиса.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- НОВАЯ НИЖНЯЯ НАВИГАЦИЯ (Tab Bar) -->
+    <nav class="fixed bottom-0 left-0 right-0 z-50 glass-nav pb-safe">
+        <div class="flex justify-around items-center h-16">
+            <button onclick="showTab('main')" id="btn-main" class="nav-item active">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+                <span class="text-[10px] font-semibold mt-1" data-i18n="nav_post">Пост</span>
+            </button>
+            
+            <button onclick="showTab('queue')" id="btn-queue" class="nav-item">
+                <div class="relative">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                    <span id="q-count" class="absolute -top-1 -right-2 bg-red-500 text-white text-[9px] font-bold px-1.5 rounded-full hidden">0</span>
+                </div>
+                <span class="text-[10px] font-semibold mt-1" data-i18n="nav_queue">Очередь</span>
+            </button>
+            
+            <button onclick="showTab('stats')" id="btn-stats" class="nav-item">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"></path><path d="M12 20V4"></path><path d="M6 20v-6"></path></svg>
+                <span class="text-[10px] font-semibold mt-1" data-i18n="nav_stats">Инфо</span>
+            </button>
+            
+            <button onclick="showTab('tools')" id="btn-tools" class="nav-item">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                <span class="text-[10px] font-semibold mt-1" data-i18n="nav_tools">Тулзы</span>
+            </button>
+
+            <button onclick="showTab('profile')" id="btn-profile" class="nav-item">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span class="text-[10px] font-semibold mt-1" data-i18n="nav_profile">Профиль</span>
+            </button>
+
+            <button onclick="showTab('admin')" id="btn-admin" class="nav-item hidden text-purple-500">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"></path></svg>
+                <span class="text-[10px] font-medium mt-1">Админ</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- ВЕРСИЯ ПРИЛОЖЕНИЯ -->
+    <div class="text-center opacity-20 text-[10px] pb-5">Telecore v1.1.1 <span id="debug-id"></span></div>
+
+    <script>
+        const API_URL = 'https://felicidad-selfsame-veritably.ngrok-free.dev';
+        const tg = window.Telegram.WebApp;
+    </script>
+    <script src="static/script.js?v=banner_redesign"></script>
+</body>
+</html>
